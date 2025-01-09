@@ -1,0 +1,43 @@
+#!/bin/bash
+
+copyFrom=$1
+copyTo=$2
+startRange=$3
+endRange=$4
+startTimeStamp=$5
+endTimeStamp=$6
+USER="`whoami`"
+CWD="`pwd`";
+
+# Export the data copyFrom the copyFrom server
+ssh "$copyFrom" "sqlite3 \"/virtual/$USER/database.db\" <<EOF
+.mode csv
+.output \"/virtual/$USER/output.csv\"
+SELECT * FROM bitly WHERE hash BETWEEN $startRange AND $endRange AND timestamp BETWEEN \"$startTimeStamp\" AND \"$endTimeStamp\";
+.output stdout
+EOF"
+
+# Copy the exported data copyTo the copyTo server
+scp ${copyFrom}:/virtual/$USER/output.csv ${copyTo}:/virtual/$USER/
+
+# Import the data copyTo the copyTo server's database
+ssh "$copyTo" "sqlite3 \"/virtual/$USER/database.db\" <<EOF
+
+CREATE TABLE temp_bitly (
+    shorturl varchar(128) primary key,
+	longurl varchar(128) not null,
+	hash INTEGER not null,
+    timestamp DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
+);
+
+.mode csv
+.import "/virtual/$USER/output.csv" temp_bitly
+
+UPDATE bitly
+SET longurl = temp_bitly.longurl, timestamp = temp_bitly.timestamp
+FROM temp_bitly
+WHERE bitly.shorturl = temp_bitly.shorturl;
+
+DROP TABLE temp_bitly;
+.import "/virtual/$USER/output.csv" bitly
+EOF"

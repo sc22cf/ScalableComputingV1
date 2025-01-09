@@ -1,0 +1,7 @@
+#!bin/bash
+from = $1
+to = $2
+timestamp = $3
+
+
+echo "CopydataFromTo from=${from} to=${to} timestamp=${timestamp} | nc localhost 8080 &

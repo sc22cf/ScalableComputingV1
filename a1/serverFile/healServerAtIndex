@@ -1,0 +1,5 @@
+#!/bin/bash
+
+hostIndex=$1
+
+echo "GetTheRange ${hostIndex}" | nc localhost 8080
